@@ -30,6 +30,30 @@ with st.sidebar:
     )
 
     st.markdown("---")
+    st.markdown("### X / FinTwit monitors")
+    if "x_handles_raw" not in st.session_state:
+        st.session_state.x_handles_raw = (
+            "KobeissiLetter, unusual_whales, spotgamma, zerohedge,\n"
+            "FirstSquawk, LiveSquawk, DeItaone, MacroAlf,\n"
+            "TheStalwart, charliebilello, NickTimiraos"
+        )
+    x_handles_raw = st.text_area(
+        "Accounts to score (comma or newline)",
+        value=st.session_state.x_handles_raw,
+        height=100,
+        help="Saved in this browser session. Used by the Live Outlook tab.",
+    )
+    b1, b2 = st.columns(2)
+    with b1:
+        if st.button("Save list", use_container_width=True):
+            st.session_state.x_handles_raw = x_handles_raw
+            st.success("Saved")
+    with b2:
+        if st.button("Reset list", use_container_width=True):
+            del st.session_state.x_handles_raw
+            st.rerun()
+
+    st.markdown("---")
     st.caption(
         "Data: Yahoo Finance via yfinance. Prices are auto-adjusted. "
         "Weeks follow the ISO calendar (Mon–Sun). Returns use the last "
@@ -103,102 +127,104 @@ rating_label, rating_cls, rating_why = risk_rating(
 first_dt = daily.index.min().strftime("%Y-%m-%d")
 last_dt = daily.index.max().strftime("%Y-%m-%d")
 
-st.markdown(
-    f"""
-    <div class="week-banner">
-      <div class="week-kicker">Active calendar week · {ticker}</div>
-      <div class="week-title">ISO Week {now_week} · {now_year}
-        &nbsp;<span class="pill {rating_cls}">{rating_label}</span>
-      </div>
-      <div class="week-sub">
-        Last daily close {last_dt} · History from {first_dt} · Lookback: {lookback_label.lower()}
-        {" · " + week_note if week_note else ""}
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+tab_hist, tab_live = st.tabs(["Historical Seasonality", "Current Week Live Outlook"])
+with tab_hist:
+    st.markdown(
+        f"""
+        <div class="week-banner">
+          <div class="week-kicker">Active calendar week · {ticker}</div>
+          <div class="week-title">ISO Week {now_week} · {now_year}
+            &nbsp;<span class="pill {rating_cls}">{rating_label}</span>
+          </div>
+          <div class="week-sub">
+            Last daily close {last_dt} · History from {first_dt} · Lookback: {lookback_label.lower()}
+            {" · " + week_note if week_note else ""}
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
-c1, c2, c3, c4, c5 = st.columns(5)
-cards = [
-    (c1, "Win rate", fmt_pct_plain(float(row["win_rate"]), 1), color_class(float(row["win_rate"]) - 0.5), f"{int(row['observations'])} completed weeks"),
-    (c2, "Average return", fmt_pct(float(row["avg_return"])), color_class(float(row["avg_return"])), "Mean Friday-to-Friday week"),
-    (c3, "Median return", fmt_pct(float(row["median_return"])), color_class(float(row["median_return"])), "Less sensitive to outliers"),
-    (c4, "Volatility (σ)", fmt_pct_plain(float(row["volatility"]), 2), "neu", "Std. dev. of weekly returns"),
-    (c5, "Max gain / loss", f"{fmt_pct(float(row['max_gain']), 1)} / {fmt_pct(float(row['max_drawdown']), 1)}", color_class(float(row["avg_return"])), rating_why),
-]
-for col, label, value, cls, hint in cards:
-    with col:
-        st.markdown(
-            f"""
-            <div class="metric-card">
-              <div class="metric-label">{label}</div>
-              <div class="metric-value {cls}">{value}</div>
-              <div class="metric-hint">{hint}</div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+    c1, c2, c3, c4, c5 = st.columns(5)
+    cards = [
+        (c1, "Win rate", fmt_pct_plain(float(row["win_rate"]), 1), color_class(float(row["win_rate"]) - 0.5), f"{int(row['observations'])} completed weeks"),
+        (c2, "Average return", fmt_pct(float(row["avg_return"])), color_class(float(row["avg_return"])), "Mean Friday-to-Friday week"),
+        (c3, "Median return", fmt_pct(float(row["median_return"])), color_class(float(row["median_return"])), "Less sensitive to outliers"),
+        (c4, "Volatility (σ)", fmt_pct_plain(float(row["volatility"]), 2), "neu", "Std. dev. of weekly returns"),
+        (c5, "Max gain / loss", f"{fmt_pct(float(row['max_gain']), 1)} / {fmt_pct(float(row['max_drawdown']), 1)}", color_class(float(row["avg_return"])), rating_why),
+    ]
+    for col, label, value, cls, hint in cards:
+        with col:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                  <div class="metric-label">{label}</div>
+                  <div class="metric-value {cls}">{value}</div>
+                  <div class="metric-hint">{hint}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
 
-st.markdown("")
-st.plotly_chart(bar_seasonality(plot_stats, now_week), use_container_width=True)
-left, right = st.columns((1.15, 1))
-with left:
-    st.plotly_chart(winrate_chart(stats, now_week), use_container_width=True)
-with right:
-    st.plotly_chart(current_week_distribution(weekly, shown_week, lookback_years, now_year), use_container_width=True)
-st.plotly_chart(heatmap_returns(matrix, now_week), use_container_width=True)
+    st.markdown("")
+    st.plotly_chart(bar_seasonality(plot_stats, now_week), use_container_width=True)
+    left, right = st.columns((1.15, 1))
+    with left:
+        st.plotly_chart(winrate_chart(stats, now_week), use_container_width=True)
+    with right:
+        st.plotly_chart(current_week_distribution(weekly, shown_week, lookback_years, now_year), use_container_width=True)
+    st.plotly_chart(heatmap_returns(matrix, now_week), use_container_width=True)
 
-st.markdown("### Week rankings")
-best = stats.nlargest(5, "avg_return")[["week", "avg_return", "win_rate", "observations"]]
-worst = stats.nsmallest(5, "avg_return")[["week", "avg_return", "win_rate", "observations"]]
-r1, r2 = st.columns(2)
-with r1:
-    st.caption("Strongest average weeks")
-    show = best.copy()
-    show["avg_return"] = (show["avg_return"] * 100).map(lambda x: f"{x:+.2f}%")
-    show["win_rate"] = (show["win_rate"] * 100).map(lambda x: f"{x:.1f}%")
-    show.columns = ["Week", "Avg return", "Win rate", "N"]
-    st.dataframe(show, hide_index=True, use_container_width=True)
-with r2:
-    st.caption("Weakest average weeks")
-    show = worst.copy()
-    show["avg_return"] = (show["avg_return"] * 100).map(lambda x: f"{x:+.2f}%")
-    show["win_rate"] = (show["win_rate"] * 100).map(lambda x: f"{x:.1f}%")
-    show.columns = ["Week", "Avg return", "Win rate", "N"]
-    st.dataframe(show, hide_index=True, use_container_width=True)
+    st.markdown("### Week rankings")
+    best = stats.nlargest(5, "avg_return")[["week", "avg_return", "win_rate", "observations"]]
+    worst = stats.nsmallest(5, "avg_return")[["week", "avg_return", "win_rate", "observations"]]
+    r1, r2 = st.columns(2)
+    with r1:
+        st.caption("Strongest average weeks")
+        show = best.copy()
+        show["avg_return"] = (show["avg_return"] * 100).map(lambda x: f"{x:+.2f}%")
+        show["win_rate"] = (show["win_rate"] * 100).map(lambda x: f"{x:.1f}%")
+        show.columns = ["Week", "Avg return", "Win rate", "N"]
+        st.dataframe(show, hide_index=True, use_container_width=True)
+    with r2:
+        st.caption("Weakest average weeks")
+        show = worst.copy()
+        show["avg_return"] = (show["avg_return"] * 100).map(lambda x: f"{x:+.2f}%")
+        show["win_rate"] = (show["win_rate"] * 100).map(lambda x: f"{x:.1f}%")
+        show.columns = ["Week", "Avg return", "Win rate", "N"]
+        st.dataframe(show, hide_index=True, use_container_width=True)
 
-st.markdown("### Full seasonality table")
-table = stats.copy()
-table["Avg return %"] = table["avg_return"] * 100
-table["Median return %"] = table["median_return"] * 100
-table["Win rate %"] = table["win_rate"] * 100
-table["Volatility %"] = table["volatility"] * 100
-table["Max gain %"] = table["max_gain"] * 100
-table["Max drawdown %"] = table["max_drawdown"] * 100
-display = table[["week", "observations", "Avg return %", "Median return %", "Win rate %", "Volatility %", "Max gain %", "Max drawdown %", "is_current"]].rename(columns={"week": "Week", "observations": "N", "is_current": "Current week"})
+    st.markdown("### Full seasonality table")
+    table = stats.copy()
+    table["Avg return %"] = table["avg_return"] * 100
+    table["Median return %"] = table["median_return"] * 100
+    table["Win rate %"] = table["win_rate"] * 100
+    table["Volatility %"] = table["volatility"] * 100
+    table["Max gain %"] = table["max_gain"] * 100
+    table["Max drawdown %"] = table["max_drawdown"] * 100
+    display = table[["week", "observations", "Avg return %", "Median return %", "Win rate %", "Volatility %", "Max gain %", "Max drawdown %", "is_current"]].rename(columns={"week": "Week", "observations": "N", "is_current": "Current week"})
 
-st.dataframe(
-    display,
-    use_container_width=True,
-    hide_index=True,
-    height=420,
-    column_config={
-        "Week": st.column_config.NumberColumn(format="%d"),
-        "N": st.column_config.NumberColumn(format="%d"),
-        "Avg return %": st.column_config.NumberColumn(format="%+.2f%%"),
-        "Median return %": st.column_config.NumberColumn(format="%+.2f%%"),
-        "Win rate %": st.column_config.ProgressColumn(format="%.1f%%", min_value=0, max_value=100),
-        "Volatility %": st.column_config.NumberColumn(format="%.2f%%"),
-        "Max gain %": st.column_config.NumberColumn(format="%+.2f%%"),
-        "Max drawdown %": st.column_config.NumberColumn(format="%+.2f%%"),
-        "Current week": st.column_config.CheckboxColumn(disabled=True),
-    },
-)
+    st.dataframe(
+        display,
+        use_container_width=True,
+        hide_index=True,
+        height=420,
+        column_config={
+            "Week": st.column_config.NumberColumn(format="%d"),
+            "N": st.column_config.NumberColumn(format="%d"),
+            "Avg return %": st.column_config.NumberColumn(format="%+.2f%%"),
+            "Median return %": st.column_config.NumberColumn(format="%+.2f%%"),
+            "Win rate %": st.column_config.ProgressColumn(format="%.1f%%", min_value=0, max_value=100),
+            "Volatility %": st.column_config.NumberColumn(format="%.2f%%"),
+            "Max gain %": st.column_config.NumberColumn(format="%+.2f%%"),
+            "Max drawdown %": st.column_config.NumberColumn(format="%+.2f%%"),
+            "Current week": st.column_config.CheckboxColumn(disabled=True),
+        },
+    )
 
-st.download_button(
-    "Download table as CSV",
-    data=display.to_csv(index=False).encode("utf-8"),
-    file_name=f"{ticker.replace('^', '')}_weekly_seasonality.csv",
-    mime="text/csv",
-)
+    st.download_button(
+        "Download table as CSV",
+        data=display.to_csv(index=False).encode("utf-8"),
+        file_name=f"{ticker.replace('^', '')}_weekly_seasonality.csv",
+        mime="text/csv",
+    )

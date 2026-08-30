@@ -9,7 +9,7 @@ DEFAULT_X_HANDLES = [
 BULL_TERMS = (
     "bullish", "risk-on", "risk on", "buy dips", "buy the dip", "positive gamma",
     "dealers should buy", "long positioning", "extremely bullish", "call stance",
-    "support", "rally", "beat", "held the tape",
+    "support", "rally", "beat", "held the tape", "bull market",
 )
 BEAR_TERMS = (
     "bearish", "risk-off", "risk off", "put skew", "hawkish", "hike",
@@ -53,7 +53,7 @@ def historical_component(row: pd.Series) -> tuple[float, str]:
     if vol > 0.025:
         score *= 0.85
     score = float(np.clip(score, -100, 100))
-    why = f"ISO-week baseline: avg {avg*100:+.2f}%, win rate {wr*100:.1f}%, vol {vol*100:.2f}% → seasonal tilt {score:+.0f}."
+    why = f"ISO-week baseline: avg {avg*100:+.2f}%, win rate {wr*100:.1f}%, vol {vol*100:.2f}% -> seasonal tilt {score:+.0f}."
     return score, why
 
 def macro_component(calendar: list, now_year: int, now_week: int) -> tuple[float, list]:
@@ -85,13 +85,13 @@ def x_component(posts: list, handles: list[str]) -> tuple[float, list]:
     scores, weights, out = [], [], []
     for p in picked:
         s = _lexicon_score(p.get("text", ""))
-        w = 1.0 + np.log1p(float(p.get("likes") or 0) / 40.0)
+        w = 1.0 + float(np.log1p(float(p.get("likes") or 0) / 40.0))
         q = dict(p)
         q["sent"] = s
         out.append(q)
         scores.append(s * w)
         weights.append(w)
-    score = float(np.clip(np.sum(scores) / max(np.sum(weights), 1e-9), -100, 100))
+    score = float(np.clip(float(np.sum(scores)) / max(float(np.sum(weights)), 1e-9), -100, 100))
     out.sort(key=lambda x: -float(x.get("likes") or 0))
     return score, out
 
@@ -114,27 +114,31 @@ def alignment_flag(hist: float, live: float) -> tuple[str, str]:
     return "Diverges from seasonal trend", "pill-bad"
 
 def gauge_figure(score: float) -> go.Figure:
-    color = "#34d399" if score >= 20 else "#fb7185" if score <= -20 else "#fbbf24"
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number",
-        value=round(score, 1),
-        number={"font": {"size": 42, "color": "#f8fafc"}},
-        title={"text": "Weekly weighted conviction (−100 to +100)", "font": {"size": 14, "color": "#94a3b8"}},
-        gauge={
-            "axis": {"range": [-100, 100], "tickcolor": "#64748b", "tickfont": {"color": "#94a3b8"}},
-            "bar": {"color": color, "thickness": 0.28},
-            "bgcolor": "rgba(15,23,42,0.6)",
-            "borderwidth": 0,
-            "steps": [
-                {"range": [-100, -55], "color": "rgba(251,113,133,0.35)"},
-                {"range": [-55, -20], "color": "rgba(251,113,133,0.18)"},
-                {"range": [-20, 20], "color": "rgba(251,191,36,0.12)"},
-                {"range": [20, 55], "color": "rgba(52,211,153,0.18)"},
-                {"range": [55, 100], "color": "rgba(52,211,153,0.35)"},
-            ],
-        },
-    ))
-    fig.update_layout(**PLOTLY_LAYOUT, height=280, margin=dict(t=40, b=10, l=20, r=20))
+    s = float(score)
+    color = "#34d399" if s >= 20 else "#fb7185" if s <= -20 else "#fbbf24"
+    fig = go.Figure()
+    fig.add_trace(
+        go.Indicator(
+            mode="gauge+number",
+            value=s,
+            number={"valueformat": ".1f"},
+            gauge={
+                "axis": {"range": [-100, 100]},
+                "bar": {"color": color},
+                "steps": [
+                    {"range": [-100, -20], "color": "#4a2030"},
+                    {"range": [-20, 20], "color": "#3d3418"},
+                    {"range": [20, 100], "color": "#16382c"},
+                ],
+            },
+        )
+    )
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        font={"color": "#d7deea", "size": 13},
+        height=280,
+        margin=dict(t=30, b=10, l=20, r=20),
+    )
     return fig
 
 def render_live_outlook(row: pd.Series, ticker: str, now_week: int, now_year: int, handles: list[str]) -> None:
@@ -163,15 +167,18 @@ def render_live_outlook(row: pd.Series, ticker: str, now_week: int, now_year: in
     )
     g, m = st.columns((1.05, 1.35))
     with g:
-        st.plotly_chart(gauge_figure(conv), use_container_width=True)
-        st.caption("Score maps −100 extremely bearish → +100 extremely bullish.")
+        try:
+            st.plotly_chart(gauge_figure(conv), use_container_width=True)
+        except Exception:
+            st.metric("Conviction", f"{conv:+.1f}")
+        st.caption("Score maps -100 extremely bearish to +100 extremely bullish.")
     with m:
         st.markdown("#### Factor stack")
         stack = pd.DataFrame({
             "Sleeve": ["Historical seasonality", "Macro & catalysts", "X sentiment / positioning"],
             "Weight": ["40%", "35%", "25%"],
-            "Score": [round(hist_s, 1), round(mac_s, 1), round(x_s, 1)],
-            "Weighted": [round(0.40 * hist_s, 1), round(0.35 * mac_s, 1), round(0.25 * x_s, 1)],
+            "Score": [round(float(hist_s), 1), round(float(mac_s), 1), round(float(x_s), 1)],
+            "Weighted": [round(0.40 * float(hist_s), 1), round(0.35 * float(mac_s), 1), round(0.25 * float(x_s), 1)],
         })
         st.dataframe(stack, hide_index=True, use_container_width=True)
         st.caption(hist_why)
@@ -200,24 +207,24 @@ def render_live_outlook(row: pd.Series, ticker: str, now_week: int, now_year: in
         "Seasonal tailwind into the week, but Warsh-driven hike odds and Friday NFP cap follow-through. Base case is a two-way, event-driven range."
         if abs(conv) < 25
         else (
-            "Seasonal edge and live sleeves point the same way — fade only on a hard data miss."
+            "Seasonal edge and live sleeves point the same way."
             if (hist_s > 0) == (conv > 0)
-            else "Live catalysts fight the seasonal baseline — size down and wait for NFP/AVGO resolution."
+            else "Live catalysts fight the seasonal baseline — size down into NFP/AVGO."
         )
     )
     scenarios = pd.DataFrame({
         "Scenario": ["Base case", "Bull case", "Bear case", "Invalidation"],
         "What has to happen": [
             "NFP not hot, yields digest Warsh, AVGO does not break the AI bid.",
-            "Soft NFP + cooling wages → Sep hike odds drop; AVGO confirms capex; dealers stay long-gamma.",
+            "Soft NFP + cooling wages; AVGO confirms capex; dealers stay long-gamma.",
             "Hot NFP/AHE or hawkish Fed-speak; put skew deepens; small caps lead lower.",
-            "Break of the 13 Aug SPX region on a hike-odds spike, or VIX regime shift off year-lows.",
+            "Break of the 13 Aug SPX region on a hike-odds spike, or VIX off year-lows.",
         ],
         "Weekly implication": [
             base,
             "Seasonal long bias can be expressed; dips more buyable than usual.",
             "Ignore a positive seasonal print; hedge or stay light into Friday.",
-            "If broken, the 40% historical sleeve is subordinated until the next ISO week.",
+            "If broken, the 40% historical sleeve is subordinated until next ISO week.",
         ],
     })
     st.dataframe(scenarios, hide_index=True, use_container_width=True)
@@ -226,7 +233,7 @@ def render_live_outlook(row: pd.Series, ticker: str, now_week: int, now_year: in
             f"""
             - **Handles this run:** {", ".join("@"+h for h in handles)}
             - **X feed:** bundled FinTwit snapshot (`x_snapshot.json`), lexicon-scored and engagement-weighted.
-            - **Formula:** `0.40 × H + 0.35 × M + 0.25 × X`, each sleeve clipped to [−100, +100].
+            - **Formula:** `0.40 * H + 0.35 * M + 0.25 * X`, each sleeve clipped to [-100, +100].
             - This is a **synthesis dashboard**, not advice.
             """
         )

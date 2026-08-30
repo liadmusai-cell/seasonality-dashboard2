@@ -61,8 +61,8 @@ with st.sidebar:
     st.markdown("---")
     st.caption(
         "Data: Yahoo Finance via yfinance. Prices are auto-adjusted. "
-        "Weeks follow the ISO calendar (Mon–Sun). Returns use the last "
-        "trading close of each ISO week. Cache refreshes every 24 hours."
+        "ISO weeks run Mon-Sun. Cash session returns use the last trading close of each ISO week. "
+        "On Sat/Sun the Live Outlook tab defaults to the week that opens Monday."
     )
 
 
@@ -103,6 +103,12 @@ wall_year, wall_week = iso_now()
 if abs((pd.Timestamp(datetime.now()) - last_close_ts).days) <= 10:
     now_year, now_week = wall_year, wall_week
 
+_now_ts = pd.Timestamp.now()
+_wd = int(_now_ts.weekday())
+_days_to_mon = (7 - _wd) % 7 or 7
+next_year, next_week = iso_now(_now_ts + pd.Timedelta(days=_days_to_mon))
+is_weekend = _wd >= 5
+
 stats = seasonality_table(weekly, lookback_years, now_year, now_week)
 if stats.empty:
     st.warning("Lookback window is too short for this ticker. Expand the window.")
@@ -131,19 +137,25 @@ rating_label, rating_cls, rating_why = risk_rating(
 
 first_dt = daily.index.min().strftime("%Y-%m-%d")
 last_dt = daily.index.max().strftime("%Y-%m-%d")
+wk_clock = (
+    f"Weekend: ISO {now_week} still on the calendar (ends tonight). "
+    f"US cash already closed Friday. Trading Outlook defaults to week {next_week} (opens Monday)."
+    if is_weekend
+    else f"In-week: ISO {now_week} is the active trading week. Next ISO week is {next_week}."
+)
 
-tab_hist, tab_live = st.tabs(["Historical Seasonality", "Current Week Live Outlook"])
+tab_hist, tab_live = st.tabs(["Historical Seasonality", "Live Outlook"])
 with tab_hist:
     st.markdown(
         f"""
         <div class="week-banner">
-          <div class="week-kicker">Active calendar week · {ticker}</div>
+          <div class="week-kicker">Calendar ISO week · {ticker}</div>
           <div class="week-title">ISO Week {now_week} · {now_year}
             &nbsp;<span class="pill {rating_cls}">{rating_label}</span>
           </div>
           <div class="week-sub">
             Last daily close {last_dt} · History from {first_dt} · Lookback: {lookback_label.lower()}
-            {" · " + week_note if week_note else ""}
+            {" · " + week_note if week_note else ""}<br/>{wk_clock}
           </div>
         </div>
         """,

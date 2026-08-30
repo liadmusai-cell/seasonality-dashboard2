@@ -1,7 +1,3 @@
-"""Streamlit Cloud entrypoint shim.
-This app was originally deployed with Main file = 'app (2).py'.
-Keep this file so Cloud can boot even if Settings were never updated.
-"""
 from pathlib import Path
 import runpy
 

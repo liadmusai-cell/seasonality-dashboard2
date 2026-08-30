@@ -31,26 +31,31 @@ with st.sidebar:
 
     st.markdown("---")
     st.markdown("### X / FinTwit monitors")
-    if "x_handles_raw" not in st.session_state:
-        st.session_state.x_handles_raw = (
+    if "x_handles_raw_v2" not in st.session_state:
+        st.session_state.x_handles_raw_v2 = (
             "KobeissiLetter, unusual_whales, spotgamma, zerohedge,\n"
-            "FirstSquawk, LiveSquawk, DeItaone, MacroAlf,\n"
-            "TheStalwart, charliebilello, NickTimiraos"
+            "DeItaone, FirstSquawk, LiveSquawk, Fxhedgers, financialjuice,\n"
+            "NickTimiraos, Lisaabramowicz1, TheStalwart, FedGuy12, biancoresearch,\n"
+            "charliebilello, RyanDetrick, awealthofcs, allstarcharts, JC_ParetsX,\n"
+            "MacroAlf, NorthmanTrader, SantiagoAuFund, elerianm,\n"
+            "LynAldenContact, lukeGromen, RaoulGMI, jsmian,\n"
+            "WSJmarkets, business, TheTranscript_, EricBalchunas,\n"
+            "Calcalist, globesnews"
         )
     x_handles_raw = st.text_area(
         "Accounts to score (comma or newline)",
-        value=st.session_state.x_handles_raw,
-        height=100,
-        help="Saved in this browser session. Used by the Live Outlook tab.",
+        value=st.session_state.x_handles_raw_v2,
+        height=140,
+        help="Curated macro / flow / news handles. Saved in this session. Used by Live Outlook.",
     )
     b1, b2 = st.columns(2)
     with b1:
         if st.button("Save list", use_container_width=True):
-            st.session_state.x_handles_raw = x_handles_raw
+            st.session_state.x_handles_raw_v2 = x_handles_raw
             st.success("Saved")
     with b2:
         if st.button("Reset list", use_container_width=True):
-            del st.session_state.x_handles_raw
+            del st.session_state.x_handles_raw_v2
             st.rerun()
 
     st.markdown("---")

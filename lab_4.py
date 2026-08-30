@@ -141,25 +141,63 @@ def gauge_figure(score: float) -> go.Figure:
     )
     return fig
 
-def render_live_outlook(row: pd.Series, ticker: str, now_week: int, now_year: int, handles: list[str]) -> None:
+def _row_for_week(stats: pd.DataFrame, week: int, fallback: pd.Series) -> pd.Series:
+    hit = stats.loc[stats["week"] == int(week)] if stats is not None and not stats.empty else pd.DataFrame()
+    if hit is None or hit.empty:
+        return fallback
+    return hit.iloc[0]
+
+def render_live_outlook(
+    row: pd.Series,
+    ticker: str,
+    now_week: int,
+    now_year: int,
+    handles: list[str],
+    stats: pd.DataFrame | None = None,
+    next_week: int | None = None,
+    next_year: int | None = None,
+    is_weekend: bool = False,
+) -> None:
+    nxt_w = int(next_week or now_week)
+    nxt_y = int(next_year or now_year)
+    if is_weekend:
+        st.info(
+            f"Sunday/Saturday: ISO week {now_week} is still on the calendar (Mon-Sun) but the US cash session "
+            f"already closed Friday. The Outlook below defaults to **week {nxt_w}** — the week that opens Monday."
+        )
+    choice = st.radio(
+        "Which week should the Outlook score?",
+        (
+            f"ISO {now_week} · still on the calendar",
+            f"ISO {nxt_w} · week ahead (opens Monday)",
+        ),
+        index=1 if is_weekend else 0,
+        horizontal=True,
+    )
+    use_ahead = "week ahead" in choice
+    target_week = nxt_w if use_ahead else int(now_week)
+    target_year = nxt_y if use_ahead else int(now_year)
+    row = _row_for_week(stats if stats is not None else pd.DataFrame(), target_week, row)
+
     snap = _load_snapshot()
     hist_s, hist_why = historical_component(row)
-    mac_s, cal = macro_component(snap.get("calendar") or [], now_year, now_week)
+    mac_s, cal = macro_component(snap.get("calendar") or [], target_year, target_week)
     x_s, posts = x_component(snap.get("posts") or [], handles)
     conv = float(np.clip(0.40 * hist_s + 0.35 * mac_s + 0.25 * x_s, -100, 100))
     flag, flag_cls = alignment_flag(hist_s, 0.35 * mac_s + 0.25 * x_s)
     label, lab_cls = conviction_label(conv)
+    scope = "week ahead (Mon open)" if use_ahead else "calendar ISO week (ends Sun)"
     st.markdown(
         f"""
         <div class="week-banner">
-          <div class="week-kicker">Current week live outlook · {ticker} · ISO {now_week} {now_year}</div>
-          <div class="week-title">Weighted conviction {conv:+.0f}
+          <div class="week-kicker">Live outlook · {ticker} · {scope}</div>
+          <div class="week-title">ISO Week {target_week} · {target_year} · conviction {conv:+.0f}
             &nbsp;<span class="pill {lab_cls}">{label}</span>
             &nbsp;<span class="pill {flag_cls}">{flag}</span>
           </div>
           <div class="week-sub">
-            40% historical seasonality ({hist_s:+.0f}) · 35% macro calendar ({mac_s:+.0f}) · 25% curated X ({x_s:+.0f})
-            · Snapshot {snap.get("as_of","")} · not a trading signal
+            40% historical seasonality of week {target_week} ({hist_s:+.0f}) · 35% macro calendar ({mac_s:+.0f})
+            · 25% curated X ({x_s:+.0f}) · Snapshot {snap.get("as_of","")} · not a trading signal
           </div>
         </div>
         """,
@@ -182,6 +220,10 @@ def render_live_outlook(row: pd.Series, ticker: str, now_week: int, now_year: in
         })
         st.dataframe(stack, hide_index=True, use_container_width=True)
         st.caption(hist_why)
+        st.caption(
+            f"Week {target_week} history: avg {float(row['avg_return'])*100:+.2f}% · "
+            f"win {float(row['win_rate'])*100:.1f}% · n={int(row['observations'])}"
+        )
     st.markdown("#### Catalyst breakdown")
     c_macro, c_flow, c_bias = st.columns(3)
     buckets = {"macro": [], "structure": [], "bias": []}
@@ -204,7 +246,7 @@ def render_live_outlook(row: pd.Series, ticker: str, now_week: int, now_year: in
                 st.caption("No items in this sleeve for the selected handles.")
     st.markdown("#### Scenario matrix")
     base = (
-        "Seasonal tailwind into the week, but Warsh-driven hike odds and Friday NFP cap follow-through. Base case is a two-way, event-driven range."
+        "Event-driven range into the next cash session. Size for NFP/AVGO, not for a seasonal slam-dunk."
         if abs(conv) < 25
         else (
             "Seasonal edge and live sleeves point the same way."
@@ -234,9 +276,20 @@ def render_live_outlook(row: pd.Series, ticker: str, now_week: int, now_year: in
             - **Handles this run:** {", ".join("@"+h for h in handles)}
             - **X feed:** bundled FinTwit snapshot (`x_snapshot.json`), lexicon-scored and engagement-weighted.
             - **Formula:** `0.40 * H + 0.35 * M + 0.25 * X`, each sleeve clipped to [-100, +100].
+            - Weekend rule: ISO weeks are Mon-Sun. After Friday cash close, default Outlook = next Monday's week.
             - This is a **synthesis dashboard**, not advice.
             """
         )
 
 with tab_live:
-    render_live_outlook(row, ticker, now_week, now_year, _parse_handles(x_handles_raw))
+    render_live_outlook(
+        row,
+        ticker,
+        now_week,
+        now_year,
+        _parse_handles(x_handles_raw),
+        stats=stats,
+        next_week=next_week,
+        next_year=next_year,
+        is_weekend=is_weekend,
+    )

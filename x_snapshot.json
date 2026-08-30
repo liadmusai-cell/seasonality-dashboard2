@@ -1,5 +1,5 @@
 {
-  "as_of": "2026-08-30T15:00:00Z",
+  "as_of": "2026-08-30T15:40:00Z",
   "iso_week": 35,
   "iso_year": 2026,
   "calendar": [
@@ -10,20 +10,22 @@
     {"date": "2026-09-02", "name": "Broadcom (AVGO) earnings after close", "impact": "HIGH", "theme": "earnings", "bias": 8},
     {"date": "2026-09-03", "name": "Jobless claims, ISM Services, Fed Waller", "impact": "MED", "theme": "macro", "bias": 0},
     {"date": "2026-09-04", "name": "US Employment Situation (NFP, AHE, unemployment)", "impact": "HIGH", "theme": "macro", "bias": 0},
-    {"date": "2026-09-15", "name": "FOMC (next week) — hike odds lifted after Warsh JH speech", "impact": "HIGH", "theme": "macro", "bias": -20}
+    {"date": "2026-09-15", "name": "FOMC — hike vs hold; Bianco sees 7-5 split", "impact": "HIGH", "theme": "macro", "bias": -15}
   ],
   "posts": [
-    {"handle": "spotgamma", "ts": "2026-08-29", "likes": 89, "cat": "structure", "text": "The options market post Warsh. The lean into a bullish/call stance in both bond ETFs and equities has faded. Points moving toward put skew. This reads more disappointment vs fear."},
-    {"handle": "spotgamma", "ts": "2026-08-26", "likes": 47, "cat": "structure", "text": "Lots of positive gamma support today for SPX and from aggregate single stocks. Dealers should buy dips."},
-    {"handle": "KobeissiLetter", "ts": "2026-08-25", "likes": 938, "cat": "bias", "text": "Institutional investors are extremely bullish worldwide. Long positioning in S&P 500 futures among asset managers is up to ~$375 billion, near its highest level on record."},
-    {"handle": "KobeissiLetter", "ts": "2026-08-24", "likes": 1808, "cat": "macro", "text": "Bullish positioning in gold is surging. Call minus put OI on GLD hit ~2.4 million contracts, highest since February. Macro and currency uncertainty driving bets on gold."},
-    {"handle": "unusual_whales", "ts": "2026-08-24", "likes": 34, "cat": "bias", "text": "JPMorgan strategist Jason Hunter flagged growing risks of a late-summer or early-autumn market downturn despite major indexes remaining in bullish trends."},
+    {"handle": "RyanDetrick", "ts": "2026-08-30", "likes": 9, "cat": "bias", "text": "The surprise summer global bull market continues."},
+    {"handle": "biancoresearch", "ts": "2026-08-29", "likes": 170, "cat": "macro", "text": "FOMC vote on September 16th will be 7-5. Not sure if it is 7-5 to hike or 7-5 to hold. Warsh is 1 of 12 votes. Jackson Hole only moved hike odds to 58%, not 85%+."},
+    {"handle": "NickTimiraos", "ts": "2026-08-28", "likes": 1209, "cat": "macro", "text": "Warsh: hard pressed to describe broad financial conditions as restrictive. Summer PCE/CPI better than expected but underlying trends have not meaningfully improved. Otherwise we have work to do."},
+    {"handle": "spotgamma", "ts": "2026-08-29", "likes": 89, "cat": "structure", "text": "Options market post Warsh: lean into bullish/call stance in bonds and equities has faded toward put skew. Reads more disappointment vs fear."},
+    {"handle": "spotgamma", "ts": "2026-08-26", "likes": 47, "cat": "structure", "text": "Lots of positive gamma support today for SPX and aggregate single stocks. Dealers should buy dips."},
+    {"handle": "KobeissiLetter", "ts": "2026-08-25", "likes": 938, "cat": "bias", "text": "Institutional investors extremely bullish. Asset-manager long S&P 500 futures ~$375B, near record. +$160B / +74% since April 2025."},
+    {"handle": "KobeissiLetter", "ts": "2026-08-24", "likes": 1808, "cat": "macro", "text": "Bullish positioning in gold surging. GLD call minus put OI ~2.4 million, highest since February. Macro and currency uncertainty."},
+    {"handle": "unusual_whales", "ts": "2026-08-24", "likes": 34, "cat": "bias", "text": "JPMorgan flagged growing risks of a late-summer or early-autumn market downturn despite major indexes remaining in bullish trends."},
     {"handle": "zerohedge", "ts": "2026-08-26", "likes": 140, "cat": "macro", "text": "After Cruel Summer for bonds, Citadel Securities macro maven flips bullish on duration."},
-    {"handle": "LiveSquawk", "ts": "2026-08-28", "likes": 5, "cat": "macro", "text": "Spain CPI (Y/Y) Aug P: 4.3% (est 4.2%; prev 3.6%) — hotter inflation print in Europe."},
-    {"handle": "FirstSquawk", "ts": "2026-08-28", "likes": 1, "cat": "macro", "text": "FRANCE (AUG) CPI Y/Y ACTUAL: 2.4% VS 2.1% PREVIOUS; EST. 2.4%. Harmonized slightly hot."},
-    {"handle": "TheStalwart", "ts": "2026-08-29", "likes": 0, "cat": "macro", "text": "Warsh Jackson Hole: underlying trends have not meaningfully improved. Bond market heard hike risk — Sep 15-16 odds ~55-60%."},
-    {"handle": "MacroAlf", "ts": "2026-08-30", "likes": 12, "cat": "structure", "text": "Rates first, stocks second. Friday NFP will move September hike odds more than any single earnings print. VIX still near year lows."},
-    {"handle": "charliebilello", "ts": "2026-08-29", "likes": 20, "cat": "bias", "text": "S&P roughly 1.1% off the Aug 13 high. Big-cap tech held the tape; small caps did not. Volume light, VIX near the year's lows."},
-    {"handle": "NickTimiraos", "ts": "2026-08-29", "likes": 15, "cat": "macro", "text": "Policy rate 3.50-3.75%. After Warsh, futures pricing ~55-60% chance of a 25bp hike on Sep 15-16. That is the week's frame into NFP."}
+    {"handle": "LiveSquawk", "ts": "2026-08-28", "likes": 5, "cat": "macro", "text": "Spain CPI (Y/Y) Aug P: 4.3% (est 4.2%; prev 3.6%) — hotter European inflation."},
+    {"handle": "FirstSquawk", "ts": "2026-08-28", "likes": 1, "cat": "macro", "text": "France Aug CPI y/y 2.4% vs 2.1% prior; harmonized slightly hot."},
+    {"handle": "MacroAlf", "ts": "2026-08-30", "likes": 12, "cat": "structure", "text": "Rates first, stocks second. Friday NFP moves September hike odds more than any earnings print. VIX still near year lows."},
+    {"handle": "charliebilello", "ts": "2026-08-29", "likes": 20, "cat": "bias", "text": "S&P roughly 1.1% off the Aug 13 high. Big-cap tech held; small caps did not. Volume light, VIX near year lows."},
+    {"handle": "TheStalwart", "ts": "2026-08-29", "likes": 0, "cat": "macro", "text": "Warsh Jackson Hole: underlying trends have not meaningfully improved. Bond market heard hike risk — Sep 15-16 odds ~55-60%."}
   ]
 }

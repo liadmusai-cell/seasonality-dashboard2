@@ -7,7 +7,10 @@ seasonality for any Yahoo Finance ticker and highlights the current ISO week.
 
 from __future__ import annotations
 
+import json
+import math
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
@@ -149,6 +152,37 @@ def build_weekly_returns(daily: pd.DataFrame) -> pd.DataFrame:
     return weekly.dropna(subset=["ret"])
 
 
+def _t_crit_90(df: int) -> float:
+    table = {
+        1: 6.314, 2: 2.920, 3: 2.353, 4: 2.132, 5: 2.015, 6: 1.943,
+        7: 1.895, 8: 1.860, 9: 1.833, 10: 1.812, 12: 1.782, 15: 1.753,
+        20: 1.725, 30: 1.697, 40: 1.684, 60: 1.671,
+    }
+    if df <= 1:
+        return 6.314
+    for k in sorted(table):
+        if df <= k:
+            return table[k]
+    return 1.645
+
+
+def _p_from_t(t: float, df: int) -> float:
+    z = abs(float(t))
+    if df < 30:
+        z = z * (1.0 - 1.0 / max(4.0 * df, 4.0))
+    return float(min(1.0, max(0.0, math.erfc(z / math.sqrt(2.0)))))
+
+
+def significance_pill(pval: float, avg: float, n: int) -> tuple[str, str]:
+    if n < 8 or pval != pval:
+        return "Low sample", "pill-ok"
+    if pval < 0.10:
+        if avg > 0:
+            return "Significant up-week", "pill-good"
+        return "Significant down-week", "pill-bad"
+    return "Not significant (90%)", "pill-ok"
+
+
 def seasonality_table(weekly: pd.DataFrame, lookback_years: Optional[int], now_year: int, now_week: int) -> pd.DataFrame:
     data = weekly.copy()
     if lookback_years is not None:
@@ -170,5 +204,19 @@ def seasonality_table(weekly: pd.DataFrame, lookback_years: Optional[int], now_y
         "p75": grouped.quantile(0.75).values,
     })
     stats = stats.sort_values("week").reset_index(drop=True)
+    n = stats["observations"].astype(float)
+    se = stats["volatility"] / np.sqrt(n.clip(lower=1.0))
+    se = se.replace(0, np.nan)
+    stats["tstat"] = stats["avg_return"] / se
+    tcrit = np.array([_t_crit_90(int(x) - 1) if x >= 3 else np.nan for x in n])
+    stats["ci90_low"] = stats["avg_return"] - tcrit * se
+    stats["ci90_high"] = stats["avg_return"] + tcrit * se
+    stats["pval"] = [
+        _p_from_t(float(t), int(nn) - 1) if nn >= 3 and t == t else np.nan
+        for t, nn in zip(stats["tstat"], n)
+    ]
+    overall = float(data["ret"].mean())
+    stats["typical_week"] = overall
+    stats["edge_vs_avg"] = stats["avg_return"] - overall
     stats["is_current"] = stats["week"] == now_week
     return stats

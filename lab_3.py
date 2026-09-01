@@ -61,8 +61,8 @@ with st.sidebar:
     st.markdown("---")
     st.caption(
         "Data: Yahoo Finance via yfinance. Prices are auto-adjusted. "
-        "ISO weeks run Mon-Sun. Cash session returns use the last trading close of each ISO week. "
-        "On Sat/Sun the Live Outlook tab defaults to the week that opens Monday."
+        "ISO weeks run Mon-Sun. White bar outlines mark weeks with p<10%. "
+        "Journal tab is a walk-forward test of the seasonal sleeve."
     )
 
 
@@ -70,7 +70,7 @@ st.markdown(
     """
     <div class="hero">
       <h1>Weekly Seasonality Lab</h1>
-      <p>Historical ISO-week edge for major indices — refreshed from live market data, no CSV required.</p>
+      <p>Historical ISO-week edge for major indices — with statistical significance and a walk-forward journal.</p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -134,6 +134,11 @@ row = current_row.iloc[0]
 rating_label, rating_cls, rating_why = risk_rating(
     float(row["avg_return"]), float(row["win_rate"]), float(row["volatility"])
 )
+sig_label, sig_cls = significance_pill(
+    float(row["pval"]) if "pval" in row.index else float("nan"),
+    float(row["avg_return"]),
+    int(row["observations"]),
+)
 
 first_dt = daily.index.min().strftime("%Y-%m-%d")
 last_dt = daily.index.max().strftime("%Y-%m-%d")
@@ -144,7 +149,7 @@ wk_clock = (
     else f"In-week: ISO {now_week} is the active trading week. Next ISO week is {next_week}."
 )
 
-tab_hist, tab_live = st.tabs(["Historical Seasonality", "Live Outlook"])
+tab_hist, tab_live, tab_journal = st.tabs(["Historical Seasonality", "Live Outlook", "Journal & Stats"])
 with tab_hist:
     st.markdown(
         f"""
@@ -152,6 +157,7 @@ with tab_hist:
           <div class="week-kicker">Calendar ISO week · {ticker}</div>
           <div class="week-title">ISO Week {now_week} · {now_year}
             &nbsp;<span class="pill {rating_cls}">{rating_label}</span>
+            &nbsp;<span class="pill {sig_cls}">{sig_label}</span>
           </div>
           <div class="week-sub">
             Last daily close {last_dt} · History from {first_dt} · Lookback: {lookback_label.lower()}
@@ -170,12 +176,12 @@ with tab_hist:
         (c4, "Volatility (σ)", fmt_pct_plain(float(row["volatility"]), 2), "neu", "Std. dev. of weekly returns"),
         (c5, "Max gain / loss", f"{fmt_pct(float(row['max_gain']), 1)} / {fmt_pct(float(row['max_drawdown']), 1)}", color_class(float(row["avg_return"])), rating_why),
     ]
-    for col, label, value, cls, hint in cards:
+    for col, lab, value, cls, hint in cards:
         with col:
             st.markdown(
                 f"""
                 <div class="metric-card">
-                  <div class="metric-label">{label}</div>
+                  <div class="metric-label">{lab}</div>
                   <div class="metric-value {cls}">{value}</div>
                   <div class="metric-hint">{hint}</div>
                 </div>
@@ -183,7 +189,37 @@ with tab_hist:
                 unsafe_allow_html=True,
             )
 
-    st.markdown("")
+    tstat = float(row["tstat"]) if "tstat" in row.index else float("nan")
+    pval = float(row["pval"]) if "pval" in row.index else float("nan")
+    ci_lo = float(row["ci90_low"]) if "ci90_low" in row.index else float("nan")
+    ci_hi = float(row["ci90_high"]) if "ci90_high" in row.index else float("nan")
+    edge = float(row["edge_vs_avg"]) if "edge_vs_avg" in row.index else float("nan")
+    typical = float(row["typical_week"]) if "typical_week" in row.index else float("nan")
+    ci_txt = "—" if ci_lo != ci_lo else f"{ci_lo*100:+.2f}% to {ci_hi*100:+.2f}%"
+    p_txt = "—" if pval != pval else f"{pval:.3f}"
+    t_txt = "—" if tstat != tstat else f"{tstat:+.2f}"
+
+    s1, s2, s3, s4 = st.columns(4)
+    stat_cards = [
+        (s1, "t-stat vs 0", t_txt, color_class(0 if tstat != tstat else tstat), "Mean / standard error"),
+        (s2, "90% CI (avg)", ci_txt, "neu", "If CI includes 0, treat as noise"),
+        (s3, "Edge vs typical week", fmt_pct(edge) if edge == edge else "—", color_class(0 if edge != edge else edge), f"Typical week {fmt_pct(typical) if typical==typical else '—'}"),
+        (s4, "p-value", p_txt, "neu" if (pval != pval or pval >= 0.10) else color_class(float(row["avg_return"])), "Two-sided test of mean ≠ 0"),
+    ]
+    for col, lab, value, cls, hint in stat_cards:
+        with col:
+            st.markdown(
+                f"""
+                <div class="metric-card">
+                  <div class="metric-label">{lab}</div>
+                  <div class="metric-value {cls}" style="font-size:1.25rem">{value}</div>
+                  <div class="metric-hint">{hint}</div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+    st.caption("White outlines on the bar chart mark weeks with p < 10%. 52 tests → a few will look significant by chance.")
+
     st.plotly_chart(bar_seasonality(plot_stats, now_week), use_container_width=True)
     left, right = st.columns((1.15, 1))
     with left:
@@ -219,7 +255,16 @@ with tab_hist:
     table["Volatility %"] = table["volatility"] * 100
     table["Max gain %"] = table["max_gain"] * 100
     table["Max drawdown %"] = table["max_drawdown"] * 100
-    display = table[["week", "observations", "Avg return %", "Median return %", "Win rate %", "Volatility %", "Max gain %", "Max drawdown %", "is_current"]].rename(columns={"week": "Week", "observations": "N", "is_current": "Current week"})
+    table["t-stat"] = table["tstat"] if "tstat" in table.columns else np.nan
+    table["p-value"] = table["pval"] if "pval" in table.columns else np.nan
+    table["90% CI low %"] = table["ci90_low"] * 100 if "ci90_low" in table.columns else np.nan
+    table["90% CI high %"] = table["ci90_high"] * 100 if "ci90_high" in table.columns else np.nan
+    table["Edge vs typical %"] = table["edge_vs_avg"] * 100 if "edge_vs_avg" in table.columns else np.nan
+    display = table[[
+        "week", "observations", "Avg return %", "Median return %", "Win rate %",
+        "t-stat", "p-value", "90% CI low %", "90% CI high %", "Edge vs typical %",
+        "Volatility %", "Max gain %", "Max drawdown %", "is_current",
+    ]].rename(columns={"week": "Week", "observations": "N", "is_current": "Current week"})
 
     st.dataframe(
         display,
@@ -232,6 +277,11 @@ with tab_hist:
             "Avg return %": st.column_config.NumberColumn(format="%+.2f%%"),
             "Median return %": st.column_config.NumberColumn(format="%+.2f%%"),
             "Win rate %": st.column_config.ProgressColumn(format="%.1f%%", min_value=0, max_value=100),
+            "t-stat": st.column_config.NumberColumn(format="%+.2f"),
+            "p-value": st.column_config.NumberColumn(format="%.3f"),
+            "90% CI low %": st.column_config.NumberColumn(format="%+.2f%%"),
+            "90% CI high %": st.column_config.NumberColumn(format="%+.2f%%"),
+            "Edge vs typical %": st.column_config.NumberColumn(format="%+.2f%%"),
             "Volatility %": st.column_config.NumberColumn(format="%.2f%%"),
             "Max gain %": st.column_config.NumberColumn(format="%+.2f%%"),
             "Max drawdown %": st.column_config.NumberColumn(format="%+.2f%%"),
